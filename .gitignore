@@ -1,0 +1,8 @@
+.gitattributes
+node_modules
+conexão.json
+creds.json
+auth_info_baileys
+.session
+.env
+*.log
