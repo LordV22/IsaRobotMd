@@ -7,6 +7,8 @@ const {
   useMultiFileAuthState,
 } = require('@whiskeysockets/baileys');
 const { handleGroupMessage } = require('./group-manager');
+const { formatMenu, handleFeatureMessage } = require('./feature-manager');
+const { handleExtraGroupCommand, initBotMode, getBotMode } = require('./extra-group-commands');
 
 const authDir = process.env.AUTH_DIR || './auth_info_baileys';
 const ownerNumber = (process.env.OWNER_NUMBER || '').replace(/\D/g, '');
@@ -19,6 +21,7 @@ let stopping = false;
 let reconnectTimer;
 
 async function start() {
+  await initBotMode({ ...process.env, AUTH_DIR: authDir });
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const sock = makeWASocket({
     auth: state,
@@ -43,7 +46,7 @@ async function start() {
       }
     }
 
-    if (connection === 'open') console.log('WhatsApp conectado; modo restrito de gerenciamento de grupos ativo.');
+    if (connection === 'open') console.log('WhatsApp conectado; comandos de grupo e ferramentas de mídia ativos.');
     if (connection === 'close' && !stopping) {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       if (statusCode === DisconnectReason.loggedOut) {
@@ -64,15 +67,21 @@ async function start() {
     for (const message of messages || []) {
       if (!message?.message || !message.key?.remoteJid?.endsWith('@g.us')) continue;
       try {
-        const result = await handleGroupMessage(sock, message, { ownerNumber });
+        const context = { ownerNumber, env: process.env, menuText: formatMenu(), botMode: getBotMode() };
+        let result = await handleGroupMessage(sock, message, context);
+        if (!result.handled) result = await handleExtraGroupCommand(sock, message, context);
+        if (!result.handled) result = await handleFeatureMessage(sock, message, context);
         if (!result.handled || !result.message) continue;
         await sock.sendMessage(message.key.remoteJid, {
-          text: result.message,
+          text: String(result.message).slice(0, 4000),
           ...(result.mentions?.length ? { mentions: result.mentions } : {}),
         }, { quoted: message });
       } catch (error) {
         console.error(`Falha em comando de grupo: ${error.message}`);
-        await sock.sendMessage(message.key.remoteJid, { text: 'Não consegui concluir o comando. Verifique permissões de administrador.' }, { quoted: message }).catch(() => {});
+        const explanation = String(error.message || '').replace(/[<>\u0000-\u001f]/g, ' ').slice(0, 220);
+        await sock.sendMessage(message.key.remoteJid, {
+          text: explanation ? `Não consegui concluir: ${explanation}` : 'Não consegui concluir o comando.',
+        }, { quoted: message }).catch(() => {});
       }
     }
   });

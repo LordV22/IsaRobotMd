@@ -106,7 +106,7 @@ test('supports /menu as help alias', async () => {
   const result = await handleGroupMessage(sock, {
     key: { remoteJid: '123@g.us', participant: `${OWNER}@s.whatsapp.net`, fromMe: false },
     message: { conversation: '/menu' },
-  }, { ownerNumber: OWNER });
+  }, { ownerNumber: OWNER, menuText: 'Menu2: /kick /setdesc /fig' });
   assert.equal(result.ok, true);
-  assert.match(result.message, /\/kick/);
+  assert.equal(result.message, 'Menu2: /kick /setdesc /fig');
 });
