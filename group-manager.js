@@ -38,10 +38,26 @@ function findTarget(message, args) {
   return `${clean}@s.whatsapp.net`;
 }
 
-function isAdmin(metadata, jid) {
-  const id = digits(jid);
-  const participant = metadata?.participants?.find((item) => digits(item.id) === id);
-  return Boolean(participant?.admin);
+function identityTokens(value) {
+  const candidates = Array.isArray(value) ? value : [value];
+  return new Set(candidates.flatMap((item) => {
+    const fields = typeof item === 'string'
+      ? [item]
+      : [item?.id, item?.jid, item?.lid].filter(Boolean);
+    return fields.map((field) => {
+      const jid = String(field);
+      return jid.endsWith('@lid') ? jid : digits(jid);
+    }).filter(Boolean);
+  }));
+}
+
+function isAdmin(metadata, identity) {
+  const expected = identityTokens(identity);
+  const participant = metadata?.participants?.find((item) => {
+    const actual = identityTokens(item);
+    return [...expected].some((token) => actual.has(token));
+  });
+  return Boolean(participant?.admin || participant?.isAdmin || participant?.isSuperAdmin);
 }
 
 async function handleGroupMessage(sock, message, { ownerNumber = '' } = {}) {
@@ -56,18 +72,21 @@ async function handleGroupMessage(sock, message, { ownerNumber = '' } = {}) {
     || (message.key.fromMe ? sock.user?.id : '')
     || '';
   const owner = digits(ownerNumber);
-  const isOwner = Boolean(owner && digits(authorJid) === owner)
-    || Boolean(message.key.fromMe && digits(sock.user?.id) === digits(authorJid));
+  // Own-account messages can carry a LID instead of the phone JID; `fromMe`
+  // is the authoritative marker for the linked account in that case.
+  const isOwner = Boolean(message.key.fromMe)
+    || Boolean(owner && digits(authorJid) === owner)
+    || isAdmin({ participants: [{ id: authorJid, jid: authorJid }] }, sock.user);
   if (!isOwner) return { handled: true, ok: false, message: 'Somente o responsável configurado pode usar os comandos.' };
 
   const metadata = await sock.groupMetadata(groupJid);
-  const botJid = sock.user?.id || '';
-  const botIsAdmin = isAdmin(metadata, botJid);
-  const ownerIsAdmin = isAdmin(metadata, authorJid);
+  const botIsAdmin = isAdmin(metadata, sock.user);
+  const ownerIsAdmin = isAdmin(metadata, authorJid)
+    || (message.key.fromMe && isAdmin(metadata, sock.user));
   const { name, args } = command;
   const target = () => findTarget(message, args);
 
-  if (name === 'ajuda' || name === 'help') {
+  if (name === 'ajuda' || name === 'help' || name === 'menu') {
     return { handled: true, ok: true, message: [
       'Comandos de grupo (o responsável precisa ser administrador):',
       '/kick @membro | /add 55DDDNUMERO | /promote @membro | /demote @membro',

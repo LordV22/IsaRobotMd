@@ -78,3 +78,35 @@ test('only approved admin operation executes for authorized owner and admin bot'
   assert.equal(result.ok, true);
   assert.deepEqual(call, ['123@g.us', [`${MEMBER}@s.whatsapp.net`], 'remove']);
 });
+
+test('accepts the paired owner account when WhatsApp marks the group message as fromMe', async () => {
+  const lid = 'anon-owner@lid';
+  let call;
+  const sock = {
+    user: { id: `${BOT}@s.whatsapp.net`, lid },
+    groupMetadata: async () => ({ participants: [
+      { id: lid, jid: `${BOT}@s.whatsapp.net`, admin: 'admin' },
+      { id: `${MEMBER}@s.whatsapp.net` },
+    ] }),
+    groupParticipantsUpdate: async (...args) => { call = args; },
+  };
+  const result = await handleGroupMessage(sock, {
+    key: { remoteJid: '123@g.us', participant: lid, fromMe: true },
+    message: { conversation: `/kick ${MEMBER}` },
+  }, { ownerNumber: OWNER });
+  assert.equal(result.ok, true);
+  assert.deepEqual(call, ['123@g.us', [`${MEMBER}@s.whatsapp.net`], 'remove']);
+});
+
+test('supports /menu as help alias', async () => {
+  const sock = {
+    user: { id: `${BOT}@s.whatsapp.net` },
+    groupMetadata: async () => ({ participants: [] }),
+  };
+  const result = await handleGroupMessage(sock, {
+    key: { remoteJid: '123@g.us', participant: `${OWNER}@s.whatsapp.net`, fromMe: false },
+    message: { conversation: '/menu' },
+  }, { ownerNumber: OWNER });
+  assert.equal(result.ok, true);
+  assert.match(result.message, /\/kick/);
+});

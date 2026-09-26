@@ -6,7 +6,7 @@ Esta variante foi separada do código legado e preserva somente comandos de mode
 
 Todos os comandos funcionam em grupos e exigem que o número `OWNER_NUMBER` seja administrador do grupo. Para comandos que alteram o grupo, o próprio bot também deve ser administrador.
 
-- `/ajuda`
+- `/menu` ou `/ajuda`
 - `/admins`
 - `/kick @membro` ou `/kick 55DDDNUMERO`
 - `/add 55DDDNUMERO`
