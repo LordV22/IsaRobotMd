@@ -9,8 +9,9 @@ global.APIKeys = {
 	'https://zenzapi.xyz': 'Your Key',
 }
 
-// Other
-global.owner = ['5517991134416']
+// Other — OWNER_NUMBER is supplied through private Railway variables.
+const configuredOwner = (process.env.OWNER_NUMBER || '5517991134416').replace(/\D/g, '')
+global.owner = [configuredOwner]
 global.packname = 'Isa Robot'
 global.author = '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 global.sessionName = 'conexão'
